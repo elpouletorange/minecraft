@@ -1,0 +1,151 @@
+import org.bukkit.Bukkit;
+import org.bukkit.World;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.HashSet;
+import java.util.Set;
+
+public class VoteWipePlugin extends JavaPlugin implements CommandExecutor {
+    private int config_minimum_vote = 1;
+    private int config_percentage_vote = 51;
+    private int config_wipe_delay = 5;
+    private int config_wipe_timeout = 55;
+
+    private Set<Player> votedPlayers = new HashSet<>();
+    private int totalVotes = 0;
+    private boolean onTimeout = false;
+
+    @Override
+    public void onEnable() {
+        // Register the "/votewipe" and "/wipe" commands
+        getCommand("votewipe").setExecutor(this);
+        getCommand("wipe").setExecutor(this);
+    }
+
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (command.getName().equalsIgnoreCase("votewipe")) {
+            if (sender instanceof Player) {
+                Player player = (Player) sender;
+
+                // Check if the player has already voted
+                if (votedPlayers.contains(player)) {
+                    player.sendMessage("You have already voted for a server wipe.");
+                    return true;
+                }
+
+                // Increment the vote count and add the player to votedPlayers set
+                totalVotes++;
+                votedPlayers.add(player);
+
+                // Broadcast the vote message
+                Bukkit.broadcastMessage(player.getName() + " has voted for a server wipe.");
+
+                // Check if the vote threshold is reached
+                if (totalVotes >= config_minimum_vote && totalVotes >= (Bukkit.getOnlinePlayers().size() * config_percentage_vote / 100)) {
+                    startWipe();
+                }
+
+                return true;
+            }
+        } else if (command.getName().equalsIgnoreCase("wipe")) {
+            if (sender.hasPermission("plugin.admin")) {
+                startWipe();
+                return true;
+            } else {
+                sender.sendMessage("You don't have permission to use this command.");
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void startWipe() {
+        // Broadcast the server wipe message
+        Bukkit.broadcastMessage("Server wipe in " + config_wipe_delay + " minutes.");
+
+        // Generate a new world
+        World newWorld = Bukkit.createWorld(Bukkit.getWorlds().get(0).getWorldType());
+
+        // Wait for the configured wipe delay
+        Bukkit.getScheduler().runTaskLater(this, () -> {
+            // Change to the new world
+            Bukkit.getOnlinePlayers().forEach(player -> player.teleport(newWorld.getSpawnLocation()));
+
+            // Start the wipe timeout
+            onTimeout = true;
+            Bukkit.getScheduler().runTaskLater(this, () -> {
+                // Reset vote count and remove voted players
+                totalVotes = 0;
+                votedPlayers.clear();
+
+                // Delete the old world
+                Bukkit.unloadWorld(Bukkit.getWorlds().get(0), false);
+                deleteWorld(Bukkit.getWorlds().get(0));
+                Bukkit.getWorlds().remove(0);
+
+                // Reset timeout flag
+                onTimeout = false;
+            }, config_wipe_timeout * 20 * 60); // Convert minutes to ticks
+        }, config_wipe_delay * 20 * 60); // Convert minutes to ticks
+    }
+
+    private void deleteWorld(World world) {
+        // Ensure the world is not loaded
+        if (world != null && !world.equals(Bukkit.getWorlds().get(0))) {
+            Bukkit.getServer().unloadWorld(world, false);
+
+            String worldFolder = world.getWorldFolder().getPath();
+            File worldFile = new File(worldFolder);
+
+            // Delete all files and directories in the world folder
+            if (worldFile.exists()) {
+                for (File file : worldFile.listFiles()) {
+                    if (file.isDirectory()) {
+                        deleteDirectory(file);
+                    } else {
+                        file.delete();
+                    }
+                }
+
+                // Delete the world folder itself
+                worldFile.delete();
+            }
+        }
+    }
+
+    private void deleteDirectory(File directory) {
+        File[] files = directory.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    deleteDirectory(file);
+                } else {
+                    file.delete();
+                }
+            }
+        }
+        directory.delete();
+    }
+}
+
+
+To use this plugin, follow these steps:
+
+Set up a new Spigot project in your preferred Java IDE.
+Create a new class called VoteWipePlugin and replace its contents with the code provided above.
+Compile the project to generate a JAR file.
+Place the generated JAR file into the plugins folder of your Spigot server.
+Start or restart your server.
+Now you should have the /votewipe command available for online players and the /wipe command for administrators to force a server wipe. The plugin will handle vote counting, wipe initiation, and world generation/deletion according to the specified configurations.
+
+
+
+
+
+

@@ -133,19 +133,3 @@ public class VoteWipePlugin extends JavaPlugin implements CommandExecutor {
         directory.delete();
     }
 }
-
-
-To use this plugin, follow these steps:
-
-Set up a new Spigot project in your preferred Java IDE.
-Create a new class called VoteWipePlugin and replace its contents with the code provided above.
-Compile the project to generate a JAR file.
-Place the generated JAR file into the plugins folder of your Spigot server.
-Start or restart your server.
-Now you should have the /votewipe command available for online players and the /wipe command for administrators to force a server wipe. The plugin will handle vote counting, wipe initiation, and world generation/deletion according to the specified configurations.
-
-
-
-
-
-
